@@ -1,13 +1,12 @@
 @echo off
 echo ================================================
-echo  PySnake - Attractive Snake Game with Database
+echo  PySnake - Classic Snake Game
 echo ================================================
 echo.
 echo Features:
-echo  - User Registration and Login
+echo  - Classic Snake Gameplay
 echo  - High Score Tracking
-echo  - Personal Statistics
-echo  - Global Leaderboard
+echo  - Modern Graphics and Sound
 echo.
 echo Starting game...
 echo.

@@ -1,8 +1,6 @@
-# PySnake - Attractive Snake Game 🐍
+# PySnake - Classic Snake Game 🐍
 
-A modern, attractive Snake game built with Python and Pygame featuring smooth graphics, sound effects, and polished gameplay.
-
-![Snake Game Demo](game_preview.png)
+A modern, classic Snake game built with Python and Pygame featuring smooth graphics, sound effects, and polished gameplay.
 
 ## Features ✨
 
@@ -22,7 +20,7 @@ A modern, attractive Snake game built with Python and Pygame featuring smooth gr
   - Responsive controls (WASD or Arrow keys)
   - Pause functionality
 - **Game Features**:
-  - Score tracking
+  - High score tracking (session-based)
   - Snake length display
   - Game over screen with restart option
   - Professional game loop and state management

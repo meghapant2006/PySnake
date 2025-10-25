@@ -6,8 +6,6 @@ from typing import List, Tuple, Optional
 import math
 import time
 from sound_manager import SoundManager
-from database_manager import get_db_manager
-from auth_screen import show_auth_screen
 
 # Initialize Pygame
 pygame.init()
@@ -189,16 +187,9 @@ class Food:
         pygame.draw.rect(screen, (255, 180, 180), highlight_rect, border_radius=4)
 
 class SnakeGame:
-    def __init__(self, user_id: int, username: str):
+    def __init__(self):
         self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-        pygame.display.set_caption(f"PySnake - Welcome {username}!")
-        
-        # User information
-        self.user_id = user_id
-        self.username = username
-        
-        # Database manager
-        self.db = get_db_manager()
+        pygame.display.set_caption("PySnake - Classic Snake Game!")
         
         # Game fonts
         self.font_large = pygame.font.Font(None, 48)
@@ -216,10 +207,7 @@ class SnakeGame:
         # Game state
         self.clock = pygame.time.Clock()
         self.game_start_time = None
-        self.show_leaderboard = False
-        self.leaderboard_data = []
-        self.user_high_score = self.db.get_user_high_score(self.user_id)
-        self.user_stats = self.db.get_user_stats(self.user_id)
+        self.high_score = 0  # Simple high score tracking in memory
         
         self.reset_game()
         self.game_over = False
@@ -232,7 +220,6 @@ class SnakeGame:
         self.game_over = False
         self.paused = False
         self.game_start_time = time.time()
-        self.show_leaderboard = False
         
         # Ensure food doesn't spawn on snake
         while self.food.position in self.snake.body:
@@ -260,10 +247,6 @@ class SnakeGame:
                         self.snake.change_direction(Direction.RIGHT)
                     elif event.key == pygame.K_SPACE:
                         self.paused = not self.paused
-                    elif event.key == pygame.K_l:
-                        self.show_leaderboard = not self.show_leaderboard
-                        if self.show_leaderboard:
-                            self.leaderboard_data = self.db.get_leaderboard(10)
                     elif event.key == pygame.K_ESCAPE:
                         return False
         
@@ -276,13 +259,9 @@ class SnakeGame:
             # Check collision
             if self.snake.check_collision():
                 self.game_over = True
-                # Save score to database
-                game_duration = int(time.time() - self.game_start_time) if self.game_start_time else 0
-                self.db.save_score(self.user_id, self.score, len(self.snake.body), game_duration)
-                
-                # Update user stats
-                self.user_high_score = self.db.get_user_high_score(self.user_id)
-                self.user_stats = self.db.get_user_stats(self.user_id)
+                # Update high score if current score is better
+                if self.score > self.high_score:
+                    self.high_score = self.score
                 
                 # Play game over sound
                 if self.sound_enabled and self.sound_manager:
@@ -306,27 +285,23 @@ class SnakeGame:
             pygame.draw.line(self.screen, Colors.GRID_LINE, (0, y), (WINDOW_WIDTH, y))
     
     def draw_ui(self):
-        # Player info
-        player_text = self.font_small.render(f"Player: {self.username}", True, Colors.TEXT_PRIMARY)
-        self.screen.blit(player_text, (10, 10))
-        
         # Current score
         score_text = self.font_medium.render(f"Score: {self.score}", True, Colors.TEXT_PRIMARY)
-        self.screen.blit(score_text, (10, 35))
+        self.screen.blit(score_text, (10, 10))
         
         # Length
         length_text = self.font_small.render(f"Length: {len(self.snake.body)}", True, Colors.TEXT_SECONDARY)
-        self.screen.blit(length_text, (10, 70))
+        self.screen.blit(length_text, (10, 40))
         
         # High score
-        if self.user_high_score > 0:
-            high_score_text = self.font_small.render(f"Your Best: {self.user_high_score}", True, Colors.TEXT_ACCENT)
-            self.screen.blit(high_score_text, (10, 95))
+        if self.high_score > 0:
+            high_score_text = self.font_small.render(f"High Score: {self.high_score}", True, Colors.TEXT_ACCENT)
+            self.screen.blit(high_score_text, (10, 65))
             
             # New high score indicator
-            if self.score > self.user_high_score:
+            if self.score > self.high_score:
                 new_record_text = self.font_small.render("NEW RECORD!", True, Colors.FOOD)
-                self.screen.blit(new_record_text, (10, 115))
+                self.screen.blit(new_record_text, (10, 85))
         
         # Game time
         if self.game_start_time:
@@ -337,7 +312,7 @@ class SnakeGame:
         
         # Controls hint
         if self.score == 0 and not self.game_over:
-            controls_text = self.font_small.render("WASD/Arrows: Move | SPACE: Pause | L: Leaderboard | ESC: Exit", True, Colors.TEXT_SECONDARY)
+            controls_text = self.font_small.render("WASD/Arrows: Move | SPACE: Pause | ESC: Exit", True, Colors.TEXT_SECONDARY)
             text_rect = controls_text.get_rect(center=(WINDOW_WIDTH//2, WINDOW_HEIGHT - 20))
             self.screen.blit(controls_text, text_rect)
         
@@ -385,101 +360,15 @@ class SnakeGame:
             self.screen.blit(duration_text, duration_rect)
         
         # High score achievement
-        if self.score > 0 and self.score >= self.user_high_score:
-            achievement_text = self.font_small.render("🏆 NEW PERSONAL BEST! 🏆", True, Colors.TEXT_ACCENT)
+        if self.score > 0 and self.score >= self.high_score:
+            achievement_text = self.font_small.render("🏆 NEW HIGH SCORE! 🏆", True, Colors.TEXT_ACCENT)
             achievement_rect = achievement_text.get_rect(center=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2 + 30))
             self.screen.blit(achievement_text, achievement_rect)
         
-        # User stats
-        if self.user_stats:
-            stats_y = WINDOW_HEIGHT//2 + 60
-            stats_text = self.font_small.render(f"Games Played: {self.user_stats.get('games_played', 0)} | Avg Score: {self.user_stats.get('avg_score', 0)}", True, Colors.TEXT_SECONDARY)
-            stats_rect = stats_text.get_rect(center=(WINDOW_WIDTH//2, stats_y))
-            self.screen.blit(stats_text, stats_rect)
-        
         # Restart instructions
-        restart_text = self.font_small.render("SPACE: Play Again | L: Leaderboard | ESC: Exit", True, Colors.TEXT_SECONDARY)
+        restart_text = self.font_small.render("SPACE: Play Again | ESC: Exit", True, Colors.TEXT_SECONDARY)
         restart_rect = restart_text.get_rect(center=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2 + 100))
         self.screen.blit(restart_text, restart_rect)
-    
-    def draw_leaderboard(self):
-        """Draw the leaderboard overlay"""
-        # Semi-transparent overlay
-        overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill(Colors.GAME_OVER_BG)
-        self.screen.blit(overlay, (0, 0))
-        
-        # Leaderboard panel
-        panel_width = 500
-        panel_height = 400
-        panel_rect = pygame.Rect(
-            (WINDOW_WIDTH - panel_width) // 2,
-            (WINDOW_HEIGHT - panel_height) // 2,
-            panel_width, panel_height
-        )
-        
-        pygame.draw.rect(self.screen, Colors.UI_BACKGROUND, panel_rect, border_radius=10)
-        pygame.draw.rect(self.screen, Colors.GRID_LINE, panel_rect, 3, border_radius=10)
-        
-        # Title
-        title_text = self.font_large.render("🏆 LEADERBOARD 🏆", True, Colors.TEXT_ACCENT)
-        title_rect = title_text.get_rect(centerx=panel_rect.centerx, y=panel_rect.top + 20)
-        self.screen.blit(title_text, title_rect)
-        
-        # Headers
-        header_y = panel_rect.top + 70
-        rank_text = self.font_small.render("RANK", True, Colors.TEXT_SECONDARY)
-        name_text = self.font_small.render("PLAYER", True, Colors.TEXT_SECONDARY)
-        score_text = self.font_small.render("SCORE", True, Colors.TEXT_SECONDARY)
-        length_text = self.font_small.render("LENGTH", True, Colors.TEXT_SECONDARY)
-        date_text = self.font_small.render("DATE", True, Colors.TEXT_SECONDARY)
-        
-        self.screen.blit(rank_text, (panel_rect.left + 20, header_y))
-        self.screen.blit(name_text, (panel_rect.left + 80, header_y))
-        self.screen.blit(score_text, (panel_rect.left + 200, header_y))
-        self.screen.blit(length_text, (panel_rect.left + 280, header_y))
-        self.screen.blit(date_text, (panel_rect.left + 360, header_y))
-        
-        # Separator line
-        pygame.draw.line(self.screen, Colors.GRID_LINE, 
-                        (panel_rect.left + 10, header_y + 25), 
-                        (panel_rect.right - 10, header_y + 25), 2)
-        
-        # Leaderboard entries
-        start_y = header_y + 35
-        for i, (username, score, snake_length, achieved_date) in enumerate(self.leaderboard_data[:8]):
-            y_pos = start_y + (i * 30)
-            
-            # Highlight current user
-            text_color = Colors.TEXT_ACCENT if username == self.username else Colors.TEXT_PRIMARY
-            
-            # Rank
-            rank_surface = self.font_small.render(f"#{i+1}", True, text_color)
-            self.screen.blit(rank_surface, (panel_rect.left + 20, y_pos))
-            
-            # Username (truncate if too long)
-            display_name = username[:12] + "..." if len(username) > 12 else username
-            name_surface = self.font_small.render(display_name, True, text_color)
-            self.screen.blit(name_surface, (panel_rect.left + 80, y_pos))
-            
-            # Score
-            score_surface = self.font_small.render(str(score), True, text_color)
-            self.screen.blit(score_surface, (panel_rect.left + 200, y_pos))
-            
-            # Length
-            length_surface = self.font_small.render(str(snake_length), True, text_color)
-            self.screen.blit(length_surface, (panel_rect.left + 280, y_pos))
-            
-            # Date (truncate time)
-            date_display = achieved_date.split(' ')[0] if ' ' in achieved_date else achieved_date
-            date_surface = self.font_small.render(date_display, True, text_color)
-            self.screen.blit(date_surface, (panel_rect.left + 360, y_pos))
-        
-        # Instructions
-        instruction_text = self.font_small.render("Press L to close leaderboard", True, Colors.TEXT_SECONDARY)
-        instruction_rect = instruction_text.get_rect(centerx=panel_rect.centerx, y=panel_rect.bottom - 30)
-        self.screen.blit(instruction_text, instruction_rect)
     
     def draw(self):
         # Clear screen
@@ -498,10 +387,6 @@ class SnakeGame:
         # Draw game over screen
         if self.game_over:
             self.draw_game_over()
-        
-        # Draw leaderboard overlay
-        if self.show_leaderboard:
-            self.draw_leaderboard()
         
         pygame.display.flip()
     
@@ -526,31 +411,20 @@ class SnakeGame:
 
 def main():
     """Main function to start the Snake game"""
-    print("Starting PySnake - Attractive Snake Game with User System!")
-    print("Database Features:")
-    print("  - User registration and login")
+    print("Starting PySnake - Classic Snake Game!")
+    print("\nFeatures:")
+    print("  - Classic snake gameplay")
     print("  - High score tracking")
-    print("  - Personal statistics")
-    print("  - Global leaderboard")
+    print("  - Modern graphics and sound")
     print("\nControls:")
     print("  - Use WASD or Arrow Keys to move")
     print("  - SPACE to pause/unpause")
-    print("  - L to toggle leaderboard")
     print("  - ESC to exit")
     print("  - When game over: SPACE to restart")
-    print("\nStarting authentication...")
+    print("\nStarting game...")
     
-    # Show authentication screen
-    user_id, username = show_auth_screen()
-    
-    if user_id is None:
-        print("Authentication failed or cancelled. Exiting...")
-        return
-    
-    print(f"Welcome {username}! Starting game...")
-    
-    # Start the game with user information
-    game = SnakeGame(user_id, username)
+    # Start the game directly
+    game = SnakeGame()
     game.run()
 
 if __name__ == "__main__":
