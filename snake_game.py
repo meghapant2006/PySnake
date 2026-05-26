@@ -5,7 +5,7 @@ from enum import Enum
 from typing import List, Tuple, Optional
 import math
 import time
-from sound_manager import SoundManager
+# Sound removed: import removed to disable audio support
 
 # Initialize Pygame
 pygame.init()
@@ -196,13 +196,9 @@ class SnakeGame:
         self.font_medium = pygame.font.Font(None, 32)
         self.font_small = pygame.font.Font(None, 24)
         
-        # Sound manager
-        try:
-            self.sound_manager = SoundManager()
-            self.sound_enabled = True
-        except:
-            self.sound_manager = None
-            self.sound_enabled = False
+        # Sound disabled
+        self.sound_manager = None
+        self.sound_enabled = False
         
         # Game state
         self.clock = pygame.time.Clock()
@@ -263,9 +259,7 @@ class SnakeGame:
                 if self.score > self.high_score:
                     self.high_score = self.score
                 
-                # Play game over sound
-                if self.sound_enabled and self.sound_manager:
-                    self.sound_manager.play_game_over_sound()
+                # Sound disabled: no-op
                 return
             
             # Check food collision
@@ -273,9 +267,7 @@ class SnakeGame:
                 self.score += 10
                 self.snake.grow(1)
                 self.food.respawn(self.snake.body)
-                # Play eat sound
-                if self.sound_enabled and self.sound_manager:
-                    self.sound_manager.play_eat_sound()
+                # Sound disabled: no-op
     
     def draw_grid(self):
         # Draw subtle grid lines
